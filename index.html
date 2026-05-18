@@ -41,9 +41,29 @@
 
     <canvas id="gameCanvas" width="800" height="600"></canvas>
 
+    <!-- Audio Elements -->
+    <audio id="homeSound" preload="auto">
+        <source src="HOME_SPACESOUND.wav" type="audio/wav">
+    </audio>
+    <audio id="startSound" preload="auto">
+        <source src="START_SPACESOUND.wav" type="audio/wav">
+    </audio>
+    <audio id="vittoriaSound" preload="auto">
+        <source src="VITTORIA_SPACESOUND.wav" type="audio/wav">
+    </audio>
+    <audio id="gameoverSound" preload="auto">
+        <source src="XXX_SPACESOUND.wav" type="audio/wav">
+    </audio>
+
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
+
+        // Audio elements
+        const homeSound = document.getElementById("homeSound");
+        const startSound = document.getElementById("startSound");
+        const vittoriaSound = document.getElementById("vittoriaSound");
+        const gameoverSound = document.getElementById("gameoverSound");
 
         // Impostazioni di gioco
         let ballRadius = 10;
@@ -51,6 +71,7 @@
         let y = canvas.height - 30;
         let dx = 4;
         let dy = -4;
+        let gameStarted = false;
 
         // Paddle (Navicella)
         const paddleHeight = 15;
@@ -88,6 +109,16 @@
             }
         }
 
+        // Start game on first click
+        document.addEventListener("click", function() {
+            if (!gameStarted) {
+                gameStarted = true;
+                startSound.play();
+                homeSound.loop = true;
+                homeSound.play();
+            }
+        });
+
         // Rilevamento collisioni
         function collisionDetection() {
             for (let c = 0; c < brickColumnCount; c++) {
@@ -99,6 +130,8 @@
                             b.status = 0;
                             score++;
                             if (score === brickRowCount * brickColumnCount) {
+                                vittoriaSound.play();
+                                homeSound.pause();
                                 alert("MISSIONE COMPIUTA! SETTORE PULITO.");
                                 location.reload();
                             }
@@ -163,6 +196,8 @@
                 if (x > paddleX && x < paddleX + paddleWidth) {
                     dy = -dy;
                 } else if (y + dy > canvas.height) {
+                    gameoverSound.play();
+                    homeSound.pause();
                     alert("GAME OVER - LA TERRA È PERDUTA!");
                     location.reload();
                 }
