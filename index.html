@@ -178,6 +178,57 @@
     const scoreDisplay = document.getElementById("score-display");
     const finalScoreDisplay = document.getElementById("final-score");
 
+    // Audio Manager
+    const AudioManager = {
+        sounds: {},
+        
+        init() {
+            // Sound Effects
+            this.sounds.homeSound = new Audio('assets/HOME_SPACESOUND.wav');
+            this.sounds.startSound = new Audio('assets/START_SPACESOUND.wav');
+            this.sounds.swoomSound = new Audio('assets/SWOOM_PERC.wav');
+            this.sounds.victoriaSound = new Audio('assets/VITTORIA_SPACESOUND.wav');
+            this.sounds.gameOverSound = new Audio('assets/XXX_SPACESOUND.wav');
+            
+            // Background Music (VITTORIA_SPACESOUND)
+            this.sounds.bgMusic = this.sounds.victoriaSound;
+            this.sounds.bgMusic.loop = true;
+            this.sounds.bgMusic.volume = 0.3;
+            
+            // Impostazioni volume per gli effetti sonori
+            this.sounds.homeSound.volume = 0.5;
+            this.sounds.startSound.volume = 0.5;
+            this.sounds.swoomSound.volume = 0.6;
+            this.sounds.gameOverSound.volume = 0.5;
+        },
+        
+        play(soundName) {
+            if (this.sounds[soundName]) {
+                this.sounds[soundName].currentTime = 0;
+                this.sounds[soundName].play().catch(e => console.log('Audio play error:', e));
+            }
+        },
+        
+        stopMusic() {
+            if (this.sounds.bgMusic) {
+                this.sounds.bgMusic.pause();
+                this.sounds.bgMusic.currentTime = 0;
+            }
+        },
+        
+        playMusic() {
+            if (this.sounds.bgMusic) {
+                this.sounds.bgMusic.play().catch(e => console.log('Music play error:', e));
+            }
+        },
+        
+        setVolume(soundName, volume) {
+            if (this.sounds[soundName]) {
+                this.sounds[soundName].volume = Math.max(0, Math.min(1, volume));
+            }
+        }
+    };
+
     // Stati del gioco: "menu", "playing", "gameover"
     let currentGameState = "menu";
     let animationId;
@@ -319,6 +370,10 @@
                         a.status = 0;
                         score += 10 * (alienRows - r); // Più punti per i nemici in alto
                         scoreDisplay.innerText = `Score: ${score}`;
+                        
+                        // Riproduci il suono SWOOM quando colpisci un bersaglio
+                        AudioManager.play('swoomSound');
+                        
                         checkVictory();
                     }
                 }
@@ -334,17 +389,29 @@
             }
         }
         if (levelCleared) {
-            triggerGameOver("VITTORIA!", "#00e676");
+            triggerGameOver("VITTORIA!", "#00e676", true);
         }
     }
 
-    function triggerGameOver(message, color) {
+    function triggerGameOver(message, color, isVictory = false) {
         currentGameState = "gameover";
         gameOverText.innerText = message;
         gameOverText.style.color = color;
         gameOverText.style.textShadow = `0 0 20px ${color}`;
         finalScoreDisplay.innerText = `Score: ${score}`;
         gameOverScreen.style.display = "flex";
+        
+        // Ferma la musica di gioco
+        AudioManager.stopMusic();
+        
+        // Riproduci il suono appropriato
+        if (isVictory) {
+            // Quando vinci, continua la musica VITTORIA
+            AudioManager.playMusic();
+        } else {
+            // Quando perdi, riproduci il suono XXX_SPACESOUND
+            AudioManager.play('gameOverSound');
+        }
     }
 
     function update() {
@@ -383,7 +450,7 @@
             ball.dy = -Math.sqrt(ball.baseSpeed * ball.baseSpeed - ball.dx * ball.dx);
             ball.y = paddle.y - ball.radius; // Posiziona sopra la piattaforma
         } else if (ball.y > canvas.height) {
-            triggerGameOver("PARTITA PERSA", "#ff1744");
+            triggerGameOver("PARTITA PERSA", "#ff1744", false);
         }
 
         // Movimento degli alieni
@@ -417,14 +484,34 @@
 
     function startGame() {
         startMenu.style.display = "none";
+        
+        // Ferma il suono HOME e riproduci il suono START
+        AudioManager.stopMusic();
+        AudioManager.play('startSound');
+        
         resetGameVariables();
         currentGameState = "playing";
+        
+        // Inizia la musica di background (VITTORIA) dopo il suono START
+        setTimeout(() => {
+            AudioManager.playMusic();
+        }, 1000);
     }
 
     function retryGame() {
         gameOverScreen.style.display = "none";
+        
+        // Ferma il suono di game over e riproduci il suono START
+        AudioManager.stopMusic();
+        AudioManager.play('startSound');
+        
         resetGameVariables();
         currentGameState = "playing";
+        
+        // Inizia la musica di background dopo il suono START
+        setTimeout(() => {
+            AudioManager.playMusic();
+        }, 1000);
     }
 
     function returnToBase() {
@@ -432,6 +519,10 @@
         startMenu.style.display = "flex";
         currentGameState = "menu";
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Ferma tutti i suoni e riproduci il suono HOME
+        AudioManager.stopMusic();
+        AudioManager.play('homeSound');
     }
 
     function resetGameVariables() {
@@ -446,62 +537,15 @@
     }
 
     // Inizializza
+    AudioManager.init();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Riproduci il suono HOME all'avvio
+    AudioManager.play('homeSound');
+    
     gameLoop();
 
 </script>
 
 </body>
 </html>
-
- // Audio Manager per Astroballs
-const AudioManager = {
-    sounds: {},
-    
-    init() {
-        // Sound Effects
-        this.sounds.ballHit = new Audio('assets/ball-hit.mp3');
-        this.sounds.alienDestroyed = new Audio('assets/alien-destroyed.mp3');
-        this.sounds.paddleHit = new Audio('assets/paddle-hit.mp3');
-        this.sounds.gameOver = new Audio('assets/game-over.mp3');
-        this.sounds.victory = new Audio('assets/victory.mp3');
-        
-        // Background Music
-        this.sounds.bgMusic = new Audio('assets/background-music.mp3');
-        this.sounds.bgMusic.loop = true;
-        this.sounds.bgMusic.volume = 0.3;
-        
-        // Impostazioni volume
-        Object.values(this.sounds).forEach(sound => {
-            if (sound !== this.sounds.bgMusic) {
-                sound.volume = 0.5;
-            }
-        });
-    },
-    
-    play(soundName) {
-        if (this.sounds[soundName]) {
-            this.sounds[soundName].currentTime = 0;
-            this.sounds[soundName].play().catch(e => console.log('Audio play error:', e));
-        }
-    },
-    
-    stopMusic() {
-        if (this.sounds.bgMusic) {
-            this.sounds.bgMusic.pause();
-            this.sounds.bgMusic.currentTime = 0;
-        }
-    },
-    
-    playMusic() {
-        if (this.sounds.bgMusic) {
-            this.sounds.bgMusic.play().catch(e => console.log('Music play error:', e));
-        }
-    },
-    
-    setVolume(soundName, volume) {
-        if (this.sounds[soundName]) {
-            this.sounds[soundName].volume = Math.max(0, Math.min(1, volume));
-        }
-    }
-};
