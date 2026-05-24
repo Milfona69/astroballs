@@ -1,42 +1,182 @@
-            ctx.font = "16px Arial";
-            ctx.fillStyle = "#00d2ff";
-            ctx.fillText("Score: " + score, 8, 20);
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Astroballs</title>
+    <style>
+        * {
+            box-sizing: border-box;
         }
-
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawBricks();
-            drawBall();
-            drawPaddle();
-            drawScore();
-            collisionDetection();
-
-            // Rimbalzo pareti laterali
-            if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) {
-                dx = -dx;
-            }
-            // Rimbalzo soffitto
-            if (y + dy < ballRadius) {
-                dy = -dy;
-            } 
-            // Controllo caduta o rimbalzo paddle
-            else if (y + dy > canvas.height - ballRadius - 10) {
-                if (x > paddleX && x < paddleX + paddleWidth) {
-                    dy = -dy;
-                } else if (y + dy > canvas.height) {
-                    gameoverSound.play();
-                    homeSound.pause();
-                    alert("GAME OVER - LA TERRA È PERDUTA!");
-                    location.reload();
-                }
-            }
-
-            x += dx;
-            y += dy;
-            requestAnimationFrame(draw);
+        body {
+            margin: 0;
+            padding: 0;
+            background: #060616;
+            color: white;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
         }
+        h1 {
+            margin: 10px 0;
+            font-size: 2.5rem;
+            letter-spacing: 5px;
+            color: #00f0ff;
+            text-shadow: 0 0 15px #00f0ff;
+        }
+        #game-container {
+            position: relative;
+            border: 4px solid #3f51b5;
+            box-shadow: 0 0 25px #3f51b5;
+            border-radius: 10px;
+            background: radial-gradient(circle, #141432 0%, #050515 100%);
+        }
+        canvas {
+            display: block;
+        }
+        #game-over-screen {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(5, 5, 20, 0.9);
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 6px;
+        }
+        #game-over-text {
+            font-size: 3.5rem;
+            color: #ff0055;
+            font-weight: bold;
+            text-shadow: 0 0 20px #ff0055;
+            margin-bottom: 30px;
+            letter-spacing: 3px;
+        }
+        .button-container {
+            display: flex;
+            gap: 20px;
+        }
+        button {
+            padding: 14px 28px;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .btn-retry {
+            background: #00f0ff;
+            color: #050515;
+            box-shadow: 0 0 15px #00f0ff;
+        }
+        .btn-retry:hover {
+            background: #ffffff;
+            box-shadow: 0 0 25px #ffffff;
+            transform: scale(1.05);
+        }
+        .btn-base {
+            background: transparent;
+            color: #ffaa00;
+            border: 2px solid #ffaa00;
+            box-shadow: inset 0 0 5px #ffaa00, 0 0 10px #ffaa00;
+        }
+        .btn-base:hover {
+            background: #ffaa00;
+            color: #050515;
+            box-shadow: 0 0 25px #ffaa00;
+            transform: scale(1.05);
+        }
+        .instructions {
+            margin-top: 15px;
+            color: #7a7a9a;
+            font-size: 0.95rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
 
-        draw();
-    </script>
-</body>
-</html>
+    <h1>ASTROBALLS</h1>
+    
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="500"></canvas>
+        <div id="game-over-screen">
+            <div id="game-over-text">PARTITA PERSA</div>
+            <div class="button-container">
+                <button class="btn-retry" onclick="resetGame()">Riprova</button>
+                <button class="btn-base" onclick="returnToBase()">Ritorna alla base</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="instructions">
+        Muovi la piattaforma con le frecce della tastiera <strong>DESTRA / SINISTRA</strong> o muovendo il <strong>MOUSE</strong>.
+    </div>
+
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const gameOverScreen = document.getElementById("game-over-screen");
+
+    let isGameOver = false;
+
+    // Configurazione Piattaforma Spaziale (Paddle)
+    const paddle = {
+        width: 130,
+        height: 16,
+        x: canvas.width / 2 - 65,
+        y: canvas.height - 35,
+        speed: 9,
+        dx: 0
+    };
+
+    // Configurazione Palla spaziale (Astroball)
+    const ball = {
+        x: canvas.width / 2,
+        y: canvas.height - 55,
+        radius: 9,
+        speed: 5,
+        dx: 4,
+        dy: -4
+    };
+
+    // Configurazione Navicelle Spaziali Nemiche (Bricks)
+    const alienRows = 5;
+    const alienCols = 9;
+    const alienWidth = 72;
+    const alienHeight = 22;
+    const alienPadding = 10;
+    const alienOffsetTop = 50;
+    const alienOffsetLeft = 35;
+
+    let aliens = [];
+
+    // Genera la griglia di navicelle
+    function createAliens() {
+        aliens = [];
+        for (let c = 0; c < alienCols; c++) {
+            aliens[c] = [];
+            for (let r = 0; r < alienRows; r++) {
+                aliens[c][r] = { x: 0, y: 0, status: 1 };
+            }
+        }
+    }
+
+    // Input Tastiera
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Right" || e.key === "ArrowRight") paddle.dx = paddle.speed;
+        if (e.key === "Left" || e.key === "ArrowLeft") paddle.dx = -paddle.speed;
+    });
+
+    document.addEventListener("keyup", (e) => {
+        if (e.key === "Right" || e.key === "ArrowRight" || e.key === "Left" || e.key === "ArrowLeft") {
+            paddle.dx =
