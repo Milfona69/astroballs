@@ -7,13 +7,14 @@
     <style>
         * {
             box-sizing: border-box;
+            user-select: none;
         }
         body {
             margin: 0;
             padding: 0;
-            background: #060616;
-            color: white;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: #020208;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -21,147 +22,179 @@
             min-height: 100vh;
             overflow: hidden;
         }
-        h1 {
-            margin: 10px 0;
-            font-size: 2.5rem;
-            letter-spacing: 5px;
-            color: #00f0ff;
-            text-shadow: 0 0 15px #00f0ff;
-        }
-        #game-container {
+        #game-wrapper {
             position: relative;
-            border: 4px solid #3f51b5;
-            box-shadow: 0 0 25px #3f51b5;
-            border-radius: 10px;
-            background: radial-gradient(circle, #141432 0%, #050515 100%);
+            width: 800px;
+            height: 500px;
+            border: 4px solid #3d5afe;
+            box-shadow: 0 0 30px #3d5afe;
+            border-radius: 12px;
+            background: radial-gradient(circle, #0a0a2a 0%, #020208 100%);
+            overflow: hidden;
         }
         canvas {
             display: block;
+            width: 100%;
+            height: 100%;
         }
-        #game-over-screen {
-            display: none;
+        
+        /* Stili per le schermate in sovrimpressione (Menu e Game Over) */
+        .screen-overlay {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(5, 5, 20, 0.9);
+            background: rgba(2, 2, 8, 0.85);
+            display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            border-radius: 6px;
+            z-index: 10;
+        }
+        
+        /* Schermata Iniziale */
+        #start-menu {
+            display: flex; /* Visibile di default */
+        }
+        .game-title {
+            font-size: 4rem;
+            letter-spacing: 8px;
+            color: #00e5ff;
+            text-shadow: 0 0 20px #00e5ff;
+            margin-bottom: 40px;
+            text-transform: uppercase;
+        }
+
+        /* Schermata di Game Over */
+        #game-over-screen {
+            display: none; /* Nascosto di default */
         }
         #game-over-text {
             font-size: 3.5rem;
-            color: #ff0055;
+            color: #ff1744;
             font-weight: bold;
-            text-shadow: 0 0 20px #ff0055;
+            text-shadow: 0 0 20px #ff1744;
             margin-bottom: 30px;
-            letter-spacing: 3px;
+            letter-spacing: 4px;
+            text-transform: uppercase;
         }
-        .button-container {
+
+        /* Pulsanti */
+        .menu-buttons {
             display: flex;
             gap: 20px;
         }
         button {
-            padding: 14px 28px;
-            font-size: 1.1rem;
+            padding: 15px 35px;
+            font-size: 1.2rem;
+            font-weight: bold;
             text-transform: uppercase;
             border: none;
-            border-radius: 30px;
+            border-radius: 50px;
             cursor: pointer;
-            font-weight: bold;
             transition: all 0.3s ease;
         }
-        .btn-retry {
-            background: #00f0ff;
-            color: #050515;
-            box-shadow: 0 0 15px #00f0ff;
+        .btn-primary {
+            background: #00e5ff;
+            color: #020208;
+            box-shadow: 0 0 15px #00e5ff;
         }
-        .btn-retry:hover {
-            background: #ffffff;
-            box-shadow: 0 0 25px #ffffff;
+        .btn-primary:hover {
+            background: #fff;
+            box-shadow: 0 0 25px #fff;
             transform: scale(1.05);
         }
-        .btn-base {
+        .btn-secondary {
             background: transparent;
-            color: #ffaa00;
-            border: 2px solid #ffaa00;
-            box-shadow: inset 0 0 5px #ffaa00, 0 0 10px #ffaa00;
+            color: #ff9100;
+            border: 2px solid #ff9100;
+            box-shadow: inset 0 0 8px rgba(255,145,0,0.3), 0 0 10px #ff9100;
         }
-        .btn-base:hover {
-            background: #ffaa00;
-            color: #050515;
-            box-shadow: 0 0 25px #ffaa00;
+        .btn-secondary:hover {
+            background: #ff9100;
+            color: #020208;
+            box-shadow: 0 0 25px #ff9100;
             transform: scale(1.05);
         }
-        .instructions {
-            margin-top: 15px;
-            color: #7a7a9a;
+        .controls-info {
+            margin-top: 20px;
+            color: #555577;
             font-size: 0.95rem;
+            letter-spacing: 1px;
             text-align: center;
         }
     </style>
 </head>
 <body>
 
-    <h1>ASTROBALLS</h1>
-    
-    <div id="game-container">
+    <div id="game-wrapper">
         <canvas id="gameCanvas" width="800" height="500"></canvas>
-        <div id="game-over-screen">
+        
+        <div id="start-menu" class="screen-overlay">
+            <div class="game-title">Astroballs</div>
+            <button class="btn-primary" onclick="startGame()">Inizia Partita</button>
+        </div>
+
+        <div id="game-over-screen" class="screen-overlay">
             <div id="game-over-text">PARTITA PERSA</div>
-            <div class="button-container">
-                <button class="btn-retry" onclick="resetGame()">Riprova</button>
-                <button class="btn-base" onclick="returnToBase()">Ritorna alla base</button>
+            <div class="menu-buttons">
+                <button class="btn-primary" onclick="retryGame()">Riprova</button>
+                <button class="btn-secondary" onclick="returnToBase()">Ritorna alla base</button>
             </div>
         </div>
     </div>
 
-    <div class="instructions">
-        Muovi la piattaforma con le frecce della tastiera <strong>DESTRA / SINISTRA</strong> o muovendo il <strong>MOUSE</strong>.
+    <div class="controls-info">
+        Usa il <strong>MOUSE</strong> o le <strong>FRECCE DIREZIONALI</strong> per muovere la piattaforma spaziale.
     </div>
 
 <script>
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
+    
+    // Riferimenti alle UI
+    const startMenu = document.getElementById("start-menu");
     const gameOverScreen = document.getElementById("game-over-screen");
+    const gameOverText = document.getElementById("game-over-text");
 
-    let isGameOver = false;
+    // Stati del gioco: "menu", "playing", "gameover"
+    let currentGameState = "menu";
+    let animationId;
 
-    // Configurazione Piattaforma Spaziale (Paddle)
+    // Configurazione Piattaforma Spaziale
     const paddle = {
         width: 130,
         height: 16,
         x: canvas.width / 2 - 65,
         y: canvas.height - 35,
-        speed: 9,
+        speed: 10,
         dx: 0
     };
 
-    // Configurazione Palla spaziale (Astroball)
+    // Configurazione Palla
     const ball = {
         x: canvas.width / 2,
         y: canvas.height - 55,
-        radius: 9,
-        speed: 5,
-        dx: 4,
-        dy: -4
+        radius: 8,
+        speed: 6,
+        dx: 5,
+        dy: -5
     };
 
-    // Configurazione Navicelle Spaziali Nemiche (Bricks)
+    // Configurazione Navicelle Nemiche
     const alienRows = 5;
     const alienCols = 9;
     const alienWidth = 72;
     const alienHeight = 22;
     const alienPadding = 10;
-    const alienOffsetTop = 50;
+    const alienOffsetTop = 65;
     const alienOffsetLeft = 35;
 
     let aliens = [];
 
-    // Genera la griglia di navicelle
-    function createAliens() {
+    // Generazione Flotta
+    function buildAlienFleet() {
         aliens = [];
         for (let c = 0; c < alienCols; c++) {
             aliens[c] = [];
@@ -171,7 +204,7 @@
         }
     }
 
-    // Input Tastiera
+    // Controlli
     document.addEventListener("keydown", (e) => {
         if (e.key === "Right" || e.key === "ArrowRight") paddle.dx = paddle.speed;
         if (e.key === "Left" || e.key === "ArrowLeft") paddle.dx = -paddle.speed;
@@ -179,4 +212,200 @@
 
     document.addEventListener("keyup", (e) => {
         if (e.key === "Right" || e.key === "ArrowRight" || e.key === "Left" || e.key === "ArrowLeft") {
-            paddle.dx =
+            paddle.dx = 0;
+        }
+    });
+
+    document.addEventListener("mousemove", (e) => {
+        if (currentGameState !== "playing") return;
+        const rect = canvas.getBoundingClientRect();
+        const relativeX = e.clientX - rect.left;
+        if (relativeX > 0 && relativeX < canvas.width) {
+            paddle.x = relativeX - paddle.width / 2;
+        }
+    });
+
+    // Disegno Elementi
+    function drawPaddle() {
+        ctx.beginPath();
+        ctx.rect(paddle.x, paddle.y, paddle.width, paddle.height);
+        ctx.fillStyle = "#3d5afe";
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "#3d5afe";
+        ctx.fill();
+        ctx.closePath();
+        
+        ctx.beginPath();
+        ctx.rect(paddle.x + 8, paddle.y + 4, paddle.width - 16, 4);
+        ctx.fillStyle = "#00e5ff";
+        ctx.fill();
+        ctx.closePath();
+        ctx.shadowBlur = 0;
+    }
+
+    function drawBall() {
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+        ctx.fillStyle = "#00e5ff";
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = "#00e5ff";
+        ctx.fill();
+        ctx.closePath();
+        ctx.shadowBlur = 0;
+    }
+
+    function drawAliens() {
+        const fleetColors = ["#ff1744", "#ff5252", "#ff9100", "#ffea00", "#00e676"];
+        for (let c = 0; c < alienCols; c++) {
+            for (let r = 0; r < alienRows; r++) {
+                if (aliens[c][r].status === 1) {
+                    let alienX = (c * (alienWidth + alienPadding)) + alienOffsetLeft;
+                    let alienY = (r * (alienHeight + alienPadding)) + alienOffsetTop;
+                    aliens[c][r].x = alienX;
+                    aliens[c][r].y = alienY;
+                    
+                    ctx.beginPath();
+                    ctx.rect(alienX, alienY, alienWidth, alienHeight);
+                    ctx.fillStyle = fleetColors[r];
+                    ctx.shadowBlur = 5;
+                    ctx.shadowColor = fleetColors[r];
+                    ctx.fill();
+                    ctx.closePath();
+                }
+            }
+        }
+        ctx.shadowBlur = 0;
+    }
+
+    // Fisica e Collisioni
+    function detectCollisions() {
+        for (let c = 0; c < alienCols; c++) {
+            for (let r = 0; r < alienRows; r++) {
+                let a = aliens[c][r];
+                if (a.status === 1) {
+                    if (ball.x > a.x && ball.x < a.x + alienWidth && ball.y > a.y && ball.y < a.y + alienHeight) {
+                        ball.dy = -ball.dy;
+                        a.status = 0;
+                        checkVictory();
+                    }
+                }
+            }
+        }
+    }
+
+    function checkVictory() {
+        let levelCleared = true;
+        for (let c = 0; c < alienCols; c++) {
+            for (let r = 0; r < alienRows; r++) {
+                if (aliens[c][r].status === 1) levelCleared = false;
+            }
+        }
+        if (levelCleared) {
+            triggerGameOver("VITTORIA!", "#00e676");
+        }
+    }
+
+    function triggerGameOver(message, color) {
+        currentGameState = "gameover";
+        gameOverText.innerText = message;
+        gameOverText.style.color = color;
+        gameOverText.style.textShadow = `0 0 20px ${color}`;
+        gameOverScreen.style.display = "flex";
+    }
+
+    function update() {
+        if (currentGameState !== "playing") return;
+
+        paddle.x += paddle.dx;
+        if (paddle.x < 0) paddle.x = 0;
+        if (paddle.x + paddle.width > canvas.width) paddle.x = canvas.width - paddle.width;
+
+        ball.x += ball.dx;
+        ball.y += ball.dy;
+
+        if (ball.x + ball.dx > canvas.width - ball.radius || ball.x + ball.dx < ball.radius) {
+            ball.dx = -ball.dx;
+        }
+        if (ball.y + ball.dy < ball.radius) {
+            ball.dy = -ball.dy;
+        }
+
+        // Rimbalzo sulla piattaforma o Game Over
+        if (ball.y + ball.dy > paddle.y - ball.radius) {
+            if (ball.x > paddle.x && ball.x < paddle.x + paddle.width) {
+                let hitPoint = ball.x - (paddle.x + paddle.width / 2);
+                ball.dx = hitPoint * 0.15;
+                ball.dy = -ball.speed;
+            } else if (ball.y > canvas.height) {
+                // PALLA CADUTA
+                triggerGameOver("PARTITA PERSA", "#ff1744");
+            }
+        }
+
+        detectCollisions();
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Disegna gli elementi solo se non siamo nel menù iniziale
+        if (currentGameState !== "menu") {
+            drawAliens();
+            drawBall();
+            drawPaddle();
+        }
+    }
+
+    function gameLoop() {
+        update();
+        draw();
+        animationId = requestAnimationFrame(gameLoop);
+    }
+
+    // --- FUNZIONI DEI PULSANTI ---
+
+    // Avvia la partita dal menù principale
+    function startGame() {
+        startMenu.style.display = "none";
+        resetGameVariables();
+        currentGameState = "playing";
+    }
+
+    // Riprova (salta il menù e ricomincia subito)
+    function retryGame() {
+        gameOverScreen.style.display = "none";
+        resetGameVariables();
+        currentGameState = "playing";
+    }
+
+    // Ritorna alla base (torna al menù principale)
+    function returnToBase() {
+        gameOverScreen.style.display = "none";
+        startMenu.style.display = "flex";
+        currentGameState = "menu";
+        
+        // Ripulisce il canvas per il menù
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // Resetta le posizioni per una nuova partita
+    function resetGameVariables() {
+        paddle.x = canvas.width / 2 - 65;
+        ball.x = canvas.width / 2;
+        ball.y = canvas.height - 55;
+        
+        // Direzione casuale iniziale della palla (destra o sinistra)
+        ball.dx = (Math.random() > 0.5 ? 5 : -5);
+        ball.dy = -5;
+
+        buildAlienFleet();
+    }
+
+    // Inizializza il canvas nero all'avvio
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    gameLoop(); // Il loop gira sempre, ma aggiorna la logica solo se currentGameState === "playing"
+
+</script>
+
+</body>
+</html> 
