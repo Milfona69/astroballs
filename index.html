@@ -183,22 +183,22 @@
         sounds: {},
         
         init() {
-            // Sound Effects
+            // Ripristinato il percorso corretto dentro la cartella assets/
             this.sounds.homeSound = new Audio('assets/HOME_SPACESOUND.wav');
             this.sounds.startSound = new Audio('assets/START_SPACESOUND.wav');
             this.sounds.swoomSound = new Audio('assets/SWOOM_PERC.wav');
             this.sounds.victoriaSound = new Audio('assets/VITTORIA_SPACESOUND.wav');
             this.sounds.gameOverSound = new Audio('assets/XXX_SPACESOUND.wav');
             
-            // Background Music (VITTORIA_SPACESOUND)
-            this.sounds.bgMusic = this.sounds.victoriaSound;
+            // HOME_SPACESOUND impostata come colonna sonora di gioco principale
+            this.sounds.bgMusic = this.sounds.homeSound;
             this.sounds.bgMusic.loop = true;
-            this.sounds.bgMusic.volume = 0.3;
+            this.sounds.bgMusic.volume = 0.4;
             
-            // Impostazioni volume per gli effetti sonori
-            this.sounds.homeSound.volume = 0.5;
+            // Volumi degli effetti sonori
             this.sounds.startSound.volume = 0.5;
             this.sounds.swoomSound.volume = 0.6;
+            this.sounds.victoriaSound.volume = 0.5;
             this.sounds.gameOverSound.volume = 0.5;
         },
         
@@ -214,6 +214,9 @@
                 this.sounds.bgMusic.pause();
                 this.sounds.bgMusic.currentTime = 0;
             }
+            // Ferma anche la musica di vittoria se era attiva
+            this.sounds.victoriaSound.pause();
+            this.sounds.victoriaSound.currentTime = 0;
         },
         
         playMusic() {
@@ -222,10 +225,9 @@
             }
         },
         
-        setVolume(soundName, volume) {
-            if (this.sounds[soundName]) {
-                this.sounds[soundName].volume = Math.max(0, Math.min(1, volume));
-            }
+        playVictoryMusic() {
+            this.sounds.victoriaSound.loop = true;
+            this.sounds.victoriaSound.play().catch(e => console.log('Victory music error:', e));
         }
     };
 
@@ -360,7 +362,6 @@
             for (let r = 0; r < alienRows; r++) {
                 let a = aliens[c][r];
                 if (a.status === 1) {
-                    // Migliorato: verifica AABB (Axis-Aligned Bounding Box)
                     if (ball.x - ball.radius < a.x + alienWidth &&
                         ball.x + ball.radius > a.x &&
                         ball.y - ball.radius < a.y + alienHeight &&
@@ -368,10 +369,10 @@
                         
                         ball.dy = -ball.dy;
                         a.status = 0;
-                        score += 10 * (alienRows - r); // Più punti per i nemici in alto
+                        score += 10 * (alienRows - r); 
                         scoreDisplay.innerText = `Score: ${score}`;
                         
-                        // Riproduci il suono SWOOM quando colpisci un bersaglio
+                        // Riproduci SWOOM_PERC quando colpisci una navicella
                         AudioManager.play('swoomSound');
                         
                         checkVictory();
@@ -401,15 +402,13 @@
         finalScoreDisplay.innerText = `Score: ${score}`;
         gameOverScreen.style.display = "flex";
         
-        // Ferma la musica di gioco
+        // Ferma la colonna sonora principale del livello
         AudioManager.stopMusic();
         
-        // Riproduci il suono appropriato
+        // Avvia l'audio corretto a seconda dell'esito
         if (isVictory) {
-            // Quando vinci, continua la musica VITTORIA
-            AudioManager.playMusic();
+            AudioManager.playVictoryMusic();
         } else {
-            // Quando perdi, riproduci il suono XXX_SPACESOUND
             AudioManager.play('gameOverSound');
         }
     }
@@ -444,11 +443,10 @@
             ball.x > paddle.x && 
             ball.x < paddle.x + paddle.width) {
             
-            // Calcola l'angolo del rimbalzo
             let hitPoint = (ball.x - (paddle.x + paddle.width / 2)) / (paddle.width / 2);
             ball.dx = hitPoint * 8;
             ball.dy = -Math.sqrt(ball.baseSpeed * ball.baseSpeed - ball.dx * ball.dx);
-            ball.y = paddle.y - ball.radius; // Posiziona sopra la piattaforma
+            ball.y = paddle.y - ball.radius; 
         } else if (ball.y > canvas.height) {
             triggerGameOver("PARTITA PERSA", "#ff1744", false);
         }
@@ -466,7 +464,6 @@
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Disegna gli elementi solo se non siamo nel menù iniziale
         if (currentGameState !== "menu") {
             drawAliens();
             drawBall();
@@ -485,33 +482,34 @@
     function startGame() {
         startMenu.style.display = "none";
         
-        // Ferma il suono HOME e riproduci il suono START
         AudioManager.stopMusic();
         AudioManager.play('startSound');
         
         resetGameVariables();
         currentGameState = "playing";
         
-        // Inizia la musica di background (VITTORIA) dopo il suono START
+        // Avvia la colonna sonora principale (HOME_SPACESOUND) mezzo secondo dopo l'effetto di inizio partita
         setTimeout(() => {
-            AudioManager.playMusic();
-        }, 1000);
+            if (currentGameState === "playing") {
+                AudioManager.playMusic();
+            }
+        }, 500);
     }
 
     function retryGame() {
         gameOverScreen.style.display = "none";
         
-        // Ferma il suono di game over e riproduci il suono START
         AudioManager.stopMusic();
         AudioManager.play('startSound');
         
         resetGameVariables();
         currentGameState = "playing";
         
-        // Inizia la musica di background dopo il suono START
         setTimeout(() => {
-            AudioManager.playMusic();
-        }, 1000);
+            if (currentGameState === "playing") {
+                AudioManager.playMusic();
+            }
+        }, 500);
     }
 
     function returnToBase() {
@@ -520,9 +518,7 @@
         currentGameState = "menu";
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Ferma tutti i suoni e riproduci il suono HOME
         AudioManager.stopMusic();
-        AudioManager.play('homeSound');
     }
 
     function resetGameVariables() {
@@ -536,13 +532,9 @@
         buildAlienFleet();
     }
 
-    // Inizializza
+    // Inizializza l'Audio Manager e avvia il loop principale
     AudioManager.init();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Riproduci il suono HOME all'avvio
-    AudioManager.play('homeSound');
-    
     gameLoop();
 
 </script>
