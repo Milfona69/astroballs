@@ -140,6 +140,14 @@
             text-shadow: 0 0 10px #00e5ff;
             z-index: 5;
         }
+
+        #audio-status {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            font-size: 0.8rem;
+            color: #666;
+        }
     </style>
 </head>
 <body>
@@ -147,6 +155,7 @@
     <div id="game-wrapper">
         <div id="score-display">Score: 0</div>
         <canvas id="gameCanvas" width="800" height="500"></canvas>
+        <div id="audio-status"></div>
         
         <div id="start-menu" class="screen-overlay">
             <div class="game-title">Astroballs</div>
@@ -177,66 +186,141 @@
     const gameOverText = document.getElementById("game-over-text");
     const scoreDisplay = document.getElementById("score-display");
     const finalScoreDisplay = document.getElementById("final-score");
+    const audioStatusDisplay = document.getElementById("audio-status");
 
-    // Audio Manager
+    // Audio Manager with improved error handling
     const AudioManager = {
         sounds: {},
+        audioEnabled: false,
         
         init() {
-            // Ripristinato il percorso corretto dentro la cartella assets/
-            this.sounds.homeSound = new Audio('assets/HOME_SPACESOUND.wav');
-            this.sounds.startSound = new Audio('assets/START_SPACESOUND.wav');
-            this.sounds.swoomSound = new Audio('assets/SWOOM_PERC.wav');
-            this.sounds.victoriaSound = new Audio('assets/VITTORIA_SPACESOUND.wav');
-            this.sounds.gameOverSound = new Audio('assets/XXX_SPACESOUND.wav');
-            
-            // HOME_SPACESOUND impostata come colonna sonora di gioco principale
-            this.sounds.bgMusic = this.sounds.homeSound;
-            this.sounds.bgMusic.loop = true;
-            this.sounds.bgMusic.volume = 0.9;
-            
-            // Volumi degli effetti sonori
-            this.sounds.startSound.volume = 0.9;
-            this.sounds.swoomSound.volume = 0.9;
-            this.sounds.victoriaSound.volume = 0.9;
-            this.sounds.gameOverSound.volume = 0.9;
+            try {
+                // Updated paths - using direct file names for current directory
+                // Make sure these audio files exist in the same directory as index.html
+                const audioFiles = {
+                    homeSound: 'HOME_SPACESOUND.wav',
+                    startSound: 'START_SPACESOUND.wav',
+                    swoomSound: 'SWOOM_PERC.wav',
+                    victoriaSound: 'VITTORIA_SPACESOUND.wav',
+                    gameOverSound: 'XXX_SPACESOUND.wav'
+                };
+
+                for (const [key, filename] of Object.entries(audioFiles)) {
+                    this.sounds[key] = new Audio(filename);
+                    this.sounds[key].preload = 'auto';
+                    this.sounds[key].onerror = () => {
+                        console.warn(`Failed to load audio: ${filename}`);
+                    };
+                    this.sounds[key].onloadstart = () => {
+                        console.log(`Loading audio: ${filename}`);
+                    };
+                }
+                
+                // HOME_SPACESOUND as main background music
+                this.sounds.bgMusic = this.sounds.homeSound;
+                this.sounds.bgMusic.loop = true;
+                this.sounds.bgMusic.volume = 0.9;
+                
+                // Sound effects volumes
+                this.sounds.startSound.volume = 0.9;
+                this.sounds.swoomSound.volume = 0.9;
+                this.sounds.victoriaSound.volume = 0.9;
+                this.sounds.gameOverSound.volume = 0.9;
+                
+                // Test audio playback capability
+                const testAudio = new Audio();
+                this.audioEnabled = testAudio.canPlayType('audio/wav') !== '';
+                
+                if (this.audioEnabled) {
+                    audioStatusDisplay.textContent = '🔊 Audio enabled';
+                    audioStatusDisplay.style.color = '#00e676';
+                } else {
+                    audioStatusDisplay.textContent = '🔇 Audio not supported';
+                    audioStatusDisplay.style.color = '#ff1744';
+                }
+                
+                console.log('AudioManager initialized. Audio enabled:', this.audioEnabled);
+            } catch (error) {
+                console.error('Error initializing AudioManager:', error);
+                audioStatusDisplay.textContent = '🔇 Audio error';
+                audioStatusDisplay.style.color = '#ff1744';
+                this.audioEnabled = false;
+            }
         },
         
         play(soundName) {
-            if (this.sounds[soundName]) {
-                this.sounds[soundName].currentTime = 0;
-                this.sounds[soundName].play().catch(e => console.log('Audio play error:', e));
+            if (!this.audioEnabled || !this.sounds[soundName]) return;
+            
+            try {
+                const sound = this.sounds[soundName];
+                sound.currentTime = 0;
+                
+                const playPromise = sound.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.warn(`Could not play ${soundName}:`, error.message);
+                    });
+                }
+            } catch (error) {
+                console.warn(`Error playing ${soundName}:`, error);
             }
         },
         
         stopMusic() {
-            if (this.sounds.bgMusic) {
-                this.sounds.bgMusic.pause();
-                this.sounds.bgMusic.currentTime = 0;
+            if (!this.audioEnabled) return;
+            
+            try {
+                if (this.sounds.bgMusic) {
+                    this.sounds.bgMusic.pause();
+                    this.sounds.bgMusic.currentTime = 0;
+                }
+                if (this.sounds.victoriaSound) {
+                    this.sounds.victoriaSound.pause();
+                    this.sounds.victoriaSound.currentTime = 0;
+                }
+            } catch (error) {
+                console.warn('Error stopping music:', error);
             }
-            // Ferma anche la musica di vittoria se era attiva
-            this.sounds.victoriaSound.pause();
-            this.sounds.victoriaSound.currentTime = 0;
         },
         
         playMusic() {
-            if (this.sounds.bgMusic) {
-                this.sounds.bgMusic.play().catch(e => console.log('Music play error:', e));
+            if (!this.audioEnabled || !this.sounds.bgMusic) return;
+            
+            try {
+                const playPromise = this.sounds.bgMusic.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.warn('Could not play background music:', error.message);
+                    });
+                }
+            } catch (error) {
+                console.warn('Error playing background music:', error);
             }
         },
         
         playVictoryMusic() {
-            this.sounds.victoriaSound.loop = true;
-            this.sounds.victoriaSound.play().catch(e => console.log('Victory music error:', e));
+            if (!this.audioEnabled || !this.sounds.victoriaSound) return;
+            
+            try {
+                this.sounds.victoriaSound.loop = true;
+                const playPromise = this.sounds.victoriaSound.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.warn('Could not play victory music:', error.message);
+                    });
+                }
+            } catch (error) {
+                console.warn('Error playing victory music:', error);
+            }
         }
     };
 
-    // Stati del gioco: "menu", "playing", "gameover"
+    // Game States: "menu", "playing", "gameover"
     let currentGameState = "menu";
     let animationId;
     let score = 0;
 
-    // Configurazione Piattaforma Spaziale
+    // Platform Configuration
     const paddle = {
         width: 130,
         height: 16,
@@ -246,7 +330,7 @@
         dx: 0
     };
 
-    // Configurazione Palla
+    // Ball Configuration
     const ball = {
         x: canvas.width / 2,
         y: canvas.height - 55,
@@ -257,7 +341,7 @@
         dy: -5
     };
 
-    // Configurazione Navicelle Nemiche
+    // Enemy Ships Configuration
     const alienRows = 5;
     const alienCols = 9;
     const alienWidth = 72;
@@ -270,7 +354,7 @@
     let alienDirection = 1;
     let alienMoveCounter = 0;
 
-    // Generazione Flotta
+    // Fleet Generation
     function buildAlienFleet() {
         aliens = [];
         for (let c = 0; c < alienCols; c++) {
@@ -283,7 +367,7 @@
         alienMoveCounter = 0;
     }
 
-    // Controlli
+    // Controls
     document.addEventListener("keydown", (e) => {
         if (e.key === "Right" || e.key === "ArrowRight") paddle.dx = paddle.speed;
         if (e.key === "Left" || e.key === "ArrowLeft") paddle.dx = -paddle.speed;
@@ -304,7 +388,7 @@
         }
     });
 
-    // Disegno Elementi
+    // Draw Elements
     function drawPaddle() {
         ctx.beginPath();
         ctx.rect(paddle.x, paddle.y, paddle.width, paddle.height);
@@ -356,7 +440,7 @@
         ctx.shadowBlur = 0;
     }
 
-    // Fisica e Collisioni
+    // Physics and Collisions
     function detectCollisions() {
         for (let c = 0; c < alienCols; c++) {
             for (let r = 0; r < alienRows; r++) {
@@ -372,7 +456,7 @@
                         score += 10 * (alienRows - r); 
                         scoreDisplay.innerText = `Score: ${score}`;
                         
-                        // Riproduci SWOOM_PERC quando colpisci una navicella
+                        // Play SWOOM_PERC when hitting a ship
                         AudioManager.play('swoomSound');
                         
                         checkVictory();
@@ -402,10 +486,10 @@
         finalScoreDisplay.innerText = `Score: ${score}`;
         gameOverScreen.style.display = "flex";
         
-        // Ferma la colonna sonora principale del livello
+        // Stop main level soundtrack
         AudioManager.stopMusic();
         
-        // Avvia l'audio corretto a seconda dell'esito
+        // Play appropriate audio based on outcome
         if (isVictory) {
             AudioManager.playVictoryMusic();
         } else {
@@ -416,28 +500,28 @@
     function update() {
         if (currentGameState !== "playing") return;
 
-        // Muove la piattaforma
+        // Move paddle
         paddle.x += paddle.dx;
         if (paddle.x < 0) paddle.x = 0;
         if (paddle.x + paddle.width > canvas.width) paddle.x = canvas.width - paddle.width;
 
-        // Muove la palla
+        // Move ball
         ball.x += ball.dx;
         ball.y += ball.dy;
 
-        // Rimbalzi sui muri laterali
+        // Bounce off side walls
         if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) {
             ball.dx = -ball.dx;
             ball.x = ball.x - ball.radius < 0 ? ball.radius : canvas.width - ball.radius;
         }
 
-        // Rimbalzo sulla parte superiore
+        // Bounce off top
         if (ball.y - ball.radius < 0) {
             ball.dy = -ball.dy;
             ball.y = ball.radius;
         }
 
-        // Rimbalzo sulla piattaforma o Game Over
+        // Bounce off paddle or Game Over
         if (ball.y + ball.radius > paddle.y && 
             ball.y - ball.radius < paddle.y + paddle.height &&
             ball.x > paddle.x && 
@@ -451,7 +535,7 @@
             triggerGameOver("PARTITA PERSA", "#ff1744", false);
         }
 
-        // Movimento degli alieni
+        // Alien movement
         alienMoveCounter++;
         if (alienMoveCounter > 30) {
             alienMoveCounter = 0;
@@ -477,7 +561,7 @@
         animationId = requestAnimationFrame(gameLoop);
     }
 
-    // --- FUNZIONI DEI PULSANTI ---
+    // --- BUTTON FUNCTIONS ---
 
     function startGame() {
         startMenu.style.display = "none";
@@ -488,7 +572,7 @@
         resetGameVariables();
         currentGameState = "playing";
         
-        // Avvia la colonna sonora principale (HOME_SPACESOUND) mezzo secondo dopo l'effetto di inizio partita
+        // Start main soundtrack 500ms after start effect
         setTimeout(() => {
             if (currentGameState === "playing") {
                 AudioManager.playMusic();
@@ -532,7 +616,7 @@
         buildAlienFleet();
     }
 
-    // Inizializza l'Audio Manager e avvia il loop principale
+    // Initialize AudioManager and start main game loop
     AudioManager.init();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     gameLoop();
